@@ -19,17 +19,20 @@ end
 build_id = SecureRandom.hex 8
 build_args = ARGV.dup
 
-# Get and remove the context directory from build args.
+# Get and remove the context directory from args.
 ctx_dir = build_args.pop
 
-# Get and remove the secrets path from build args.
+# Get and remove `--secrets`.
 secrets_opt_idx = build_args.index '--secrets'
 if secrets_opt_idx.nil?
     abort "No secrets specified"
 end
 _, secrets_path = build_args.slice! secrets_opt_idx, 2
 
-# Get and remove the image tag from build args.
+# Check `--secrets-follow-link`.
+secrets_follow_link_opt = build_args.delete('--secrets-follow-link') and '-L'
+
+# Get and remove the image tag.
 tag_opt_idx = build_args.index { |arg| %w(-t --tag).include? arg }
 if tag_opt_idx.nil?
     abort "No tag specified"
@@ -65,7 +68,7 @@ end
 
 # Create the secrets image.
 puts "Creating base image with secrets" if $verbose
-secrets_image = %x(#{CREATE_UTIL} #{base_image} #{secrets_path} SECRETS)
+secrets_image = %x(#{CREATE_UTIL} #{secrets_follow_link_opt} #{base_image} #{secrets_path} SECRETS)
 exit 1 if $? != 0
 puts "Created #{secrets_image}" if $verbose
 begin
