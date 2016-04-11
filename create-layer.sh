@@ -12,7 +12,7 @@ function usage {
 while getopts "L" OPT; do
     case $OPT in
         L)
-            follow_link="-L"
+            follow_link="-h"
             ;;
         h|?)
             usage
@@ -28,11 +28,6 @@ fi
 container=$(docker create "$1")
 trap "docker rm ${container} > /dev/null" exit
 
-# Seems like whatever we do, specifying a directory
-# copies the directory, not its contents.
-shopt -s nullglob dotglob
-for entry in "$2"/*; do
-  docker cp ${follow_link} "${entry}" ${container}:/
-done
+tar -C "$2" -c ${follow_link} . | docker cp - ${container}:/
 
 docker commit -m "$3" ${container}
