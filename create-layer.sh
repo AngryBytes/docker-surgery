@@ -2,6 +2,7 @@
 set -e
 
 follow_link=""
+tag=""
 
 function usage {
     echo "Usage: $0 [-L] <base image> <directory> <comment>" >& 2
@@ -9,10 +10,13 @@ function usage {
     exit 64
 }
 
-while getopts "L" OPT; do
+while getopts "Lt:" OPT; do
     case $OPT in
         L)
             follow_link="-h"
+            ;;
+        t)
+            tag="${OPTARG}"
             ;;
         h|?)
             usage
@@ -30,4 +34,4 @@ trap "docker rm ${container} > /dev/null" exit
 
 tar -C "$2" -c ${follow_link} . | docker cp - ${container}:/
 
-docker commit -m "$3" ${container}
+docker commit -m "$3" ${container} "${tag}"

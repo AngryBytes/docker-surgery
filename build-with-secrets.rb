@@ -68,7 +68,8 @@ end
 
 # Create the secrets image.
 puts "Creating base image with secrets" if $verbose
-secrets_image = %x(#{CREATE_UTIL} #{secrets_follow_link_opt} #{base_image} #{secrets_path} SECRETS)
+secrets_tag = "docker-surgery.invalid/secrets:#{build_id}"
+secrets_image = %x(#{CREATE_UTIL} #{secrets_follow_link_opt} -t #{secrets_tag} #{base_image} #{secrets_path} SECRETS)
 exit 1 if $? != 0
 puts "Created #{secrets_image}" if $verbose
 begin
@@ -76,25 +77,22 @@ begin
     # Create the temporary Dockerfile.
     temp_dockerfile_name = ".Dockerfile.#{build_id}"
     temp_dockerfile_path = File.join(ctx_dir, temp_dockerfile_name)
-    temp_dockerfile = dockerfile.sub(FROM_RE) { "#{$1}#{secrets_image}" }
+    temp_dockerfile = dockerfile.sub(FROM_RE) { "#{$1}#{secrets_tag}" }
     File.write temp_dockerfile_path, temp_dockerfile
     begin
 
         # Add the temporary Dockerfile and tag to the build args.
-        tag_with_secrets = "docker-surgery.invalid/build:#{build_id}"
-        build_args += ['-f', temp_dockerfile_name, '-t', tag_with_secrets, ctx_dir]
+        build_tag = "docker-surgery.invalid/build:#{build_id}"
+        build_args += ['-f', temp_dockerfile_name, '-t', build_tag, ctx_dir]
 
         # Invoke the actual build.
         build_cmd = ['docker', 'build'] + build_args
         system_verbose(*build_cmd)
         begin
 
-            # No longer need to clean up the secrets image.
-            secrets_image = nil
-
             # Recreate the image with secrets stripped.
             puts "Stripping image of secrets" if $verbose
-            stripped_image = %x(#{STRIP_UTIL} #{tag_with_secrets} #{tag} SECRETS)
+            stripped_image = %x(#{STRIP_UTIL} #{build_tag} #{tag} SECRETS)
             exit 1 if $? != 0
             if $verbose
                 puts "Created #{stripped_image}"
@@ -103,7 +101,7 @@ begin
             end
 
         ensure
-            system("docker rmi #{tag_with_secrets}", :out => :close) or exit 1
+            system("docker rmi #{build_tag}", :out => :close) or exit 1
         end
 
     # Clean up temporary Dockerfile.
@@ -113,7 +111,5 @@ begin
 
 # Clean up secrets image.
 ensure
-    unless secrets_image.nil?
-        system("docker rmi #{secrets_image}", :out => :close) or exit 1
-    end
+    system("docker rmi #{secrets_tag}", :out => :close) or exit 1
 end
