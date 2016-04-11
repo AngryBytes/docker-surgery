@@ -34,7 +34,7 @@ Usage: `strip-layers.rb <base image> <new tag> <comment>`
 
 Creates a new image from the given base image with certain layers stripped.
 
-The new image with have the given tag. Layers that are stripped are selected by
+The new image will have the given tag. Layers that are stripped are selected by
 the given comment.
 
 Outputs the new image ID.
